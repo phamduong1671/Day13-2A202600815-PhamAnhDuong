@@ -1,0 +1,6 @@
+- Thêm observability: log latency, cost, tokens, tools, trace, PII, loop, injection.  
+- Tối ưu config.json: giảm temperature, bật cache/retry/redact/normalize/loop_guard/verify.  
+- Giới hạn tool_budget, giảm context/output để giảm cost và latency.  
+- Viết lại prompt.txt tool-first, không bịa, tính đúng, chống injection, không lộ PII.  
+- Chuẩn hóa output về dạng Tong cong: <int> VND. 
+- Thêm fallback thông minh cho sản phẩm lạ, AirPods hết hàng, ship không hỗ trợ.

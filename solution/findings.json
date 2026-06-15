@@ -1,12 +1,96 @@
 {
-  "team": "TODO-team-name",
+  "team": "PhamAnhDuong",
   "schema_version": 1,
   "findings": [
     {
-      "fault_class": "latency_spike",
-      "evidence": {"metric": "latency_p95_ms", "observed": "TODO from your telemetry", "trace_ids": []},
-      "root_cause": "TODO: what config knob or behavior causes it?",
-      "suggested_fix": "TODO: config change and/or wrapper mitigation"
+      "fault_class": "error_spike",
+      "evidence": {
+        "metric": "run_output status",
+        "observed": "Public run had 120/120 rows with status=wrapper_error and null answers; sealed telemetry indicated Connection error from provider=local.",
+        "trace_ids": ["pub-001", "pub-120"]
+      },
+      "root_cause": "The local model endpoint was not reachable from the simulator process, most likely LOCAL_BASE_URL was unset or not exported into the shell running the Linux binary.",
+      "suggested_fix": "Export LOCAL_BASE_URL=http://localhost:11434/v1 before running sim/score; wrapper now logs call_next exceptions and config uses longer timeout plus three retry attempts."
+    },
+    {
+      "fault_class": "arithmetic_error",
+      "evidence": {
+        "metric": "prompt/config audit",
+        "observed": "Initial prompt only said to help and give a VND total; temperature was 1.6 and verify was false, so exact subtotal/discount/shipping arithmetic was not constrained.",
+        "trace_ids": []
+      },
+      "root_cause": "The model was asked for a total without an exact formula or verification step, while high temperature made arithmetic unstable.",
+      "suggested_fix": "Prompt now defines the exact formula and config lowers temperature and enables verify."
+    },
+    {
+      "fault_class": "prompt_injection",
+      "evidence": {
+        "metric": "prompt/wrapper audit",
+        "observed": "Initial prompt did not distinguish order notes from instructions; wrapper did not sanitize note text before calling the agent.",
+        "trace_ids": []
+      },
+      "root_cause": "User-supplied notes could override stock, price, discount, or privacy instructions.",
+      "suggested_fix": "Prompt treats notes as data only; wrapper neutralizes common instruction phrases inside note sections."
+    },
+    {
+      "fault_class": "pii_leak",
+      "evidence": {
+        "metric": "output guardrail audit",
+        "observed": "Initial config had redact_pii=false and wrapper returned raw answers.",
+        "trace_ids": []
+      },
+      "root_cause": "No privacy instruction or output redaction guarded emails, phone numbers, card numbers, or IDs.",
+      "suggested_fix": "Prompt forbids repeating PII; config enables redact_pii; wrapper redacts answer text and logs pii_in_answer."
+    },
+    {
+      "fault_class": "tool_overuse",
+      "evidence": {
+        "metric": "config audit",
+        "observed": "Initial tool_budget was 0 and loop_guard was false, allowing repeated or unnecessary tool calls.",
+        "trace_ids": []
+      },
+      "root_cause": "The prompt lacked a one-call-per-tool rule and config did not cap tool use.",
+      "suggested_fix": "Prompt caps each needed tool at once; config enables loop_guard and sets tool_budget to 3."
+    },
+    {
+      "fault_class": "fabrication",
+      "evidence": {
+        "metric": "prompt audit",
+        "observed": "Initial prompt asked the agent to help and give a total in VND without requiring stock/tool grounding or a no-total refusal path.",
+        "trace_ids": []
+      },
+      "root_cause": "The model could invent totals for unknown, unsupported, or out-of-stock orders because refusal conditions were absent.",
+      "suggested_fix": "Prompt now requires check_stock grounding and refuses unknown/out-of-stock/unsupported cases without a total."
+    },
+    {
+      "fault_class": "tool_failure",
+      "evidence": {
+        "metric": "config audit",
+        "observed": "Initial normalize_unicode=false and catalog_override marked macbook out of stock, while public traffic includes diacritic city names and MacBook orders.",
+        "trace_ids": []
+      },
+      "root_cause": "Unicode/city normalization failures and catalog overrides can make valid tool lookups fail or return contradictory stock data.",
+      "suggested_fix": "Config enables normalize_unicode and clears catalog_override."
+    },
+    {
+      "fault_class": "quality_drift",
+      "evidence": {
+        "metric": "config audit",
+        "observed": "Initial session_drift_rate was 0.06 with no context reset, allowing later turns in a session to degrade.",
+        "trace_ids": []
+      },
+      "root_cause": "Stateful context drift can corrupt repeated user sessions and coupon/order handling.",
+      "suggested_fix": "Config sets session_drift_rate to 0 and context_reset_every to 4."
+    },
+    {
+      "fault_class": "cost_blowup",
+      "evidence": {
+        "metric": "config audit",
+        "observed": "Initial verbose_system=true, context_size=8, max_completion_tokens=2000, and no tool budget made the agent unnecessarily expensive.",
+        "trace_ids": []
+      },
+      "root_cause": "Large context/output limits and verbose prompting inflate token use without improving simple order calculations.",
+      "suggested_fix": "Config disables verbose_system, reduces context/output limits, and caps tool calls."
     }
   ]
 }
